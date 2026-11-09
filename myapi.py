@@ -6,6 +6,10 @@ from typing import Optional
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 from supabase_auth.errors import AuthApiError
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+bearer_scheme = HTTPBearer(auto_error=False)
+
 
 load_dotenv()
 
@@ -46,15 +50,11 @@ def login(creds: Credentials):
         raise HTTPException(status_code=401, detail="Invalid login credentials")
     return {"access_token": result.session.access_token, "refresh_token": result.session.refresh_token }
 
-def get_current_user(authorization: Optional[str] = Header(None)):
-    if not authorization:
+def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)):
+    if credentials is None:
         raise HTTPException(status_code=401, detail="Access token required")
     
-    parts = authorization.split()
-    if len(parts) != 2 or parts[0].lower() != 'bearer':
-        raise HTTPException(status_code=401, detail="Access token required")
-    token = parts[1]
-
+    token = credentials.credentials
     try:
         result = supabase.auth.get_user(token)
     except Exception:
