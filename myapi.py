@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException, Request, Header
+from fastapi import FastAPI, HTTPException, Request, Header, Depends, Response
 from dotenv import load_dotenv
 from supabase import create_client
 from typing import Optional
@@ -46,8 +46,7 @@ def login(creds: Credentials):
         raise HTTPException(status_code=401, detail="Invalid login credentials")
     return {"access_token": result.session.access_token, "refresh_token": result.session.refresh_token }
 
-@app.get('/protected/profile')
-def profile(authorization: Optional[str] = Header(None)):
+def get_current_user(authorization: Optional[str] = Header(None)):
     if not authorization:
         raise HTTPException(status_code=401, detail="Access token required")
     
@@ -64,8 +63,22 @@ def profile(authorization: Optional[str] = Header(None)):
     if result is None or result.user is None:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-    user = result.user
+    return result.user
+
+@app.get('/protected/profile')
+def profile(user = Depends(get_current_user)):
     return {"id": user.id, "email": user.email, "created_at": user.created_at}
 
-        
+@app.get('/protected/dashboard')
+def dashboard(user = Depends(get_current_user)):
+    return {"message": f"Welcome {user.email}"}
+
+@app.post("/auth/logout", status_code=204)
+def logout(user = Depends(get_current_user)):
+    try:
+        supabase.auth.sign_out()
+    except Exception:
+        pass
+    return Response(status_code=204)
+
     
