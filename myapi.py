@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Header
 from dotenv import load_dotenv
 from supabase import create_client
 from typing import Optional
@@ -45,3 +45,18 @@ def login(creds: Credentials):
     except AuthApiError:
         raise HTTPException(status_code=401, detail="Invalid login credentials")
     return {"access_token": result.session.access_token, "refresh_token": result.session.refresh_token }
+
+@app.get('/protected/profile')
+def profile(authorization: Optional[str] = Header(None)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Access token required")
+    
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != 'bearer':
+        raise HTTPException(status_code=401, detail="Access token required")
+    token = parts[1]
+
+    return {"message": "Token Received (not verified yet)"}
+
+        
+    
